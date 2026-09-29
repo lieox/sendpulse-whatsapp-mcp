@@ -1,0 +1,29 @@
+{
+  "name": "sendpulse-whatsapp-mcp",
+  "version": "1.1.0",
+  "description": "MCP server for the SendPulse WhatsApp chatbot API: bots, contacts, chats, flows, templates and campaigns",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": { "sendpulse-whatsapp-mcp": "dist/index.js" },
+  "files": ["dist", "README.md", "LICENSE"],
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts"
+  },
+  "keywords": ["mcp", "sendpulse", "whatsapp", "claude", "chatbot"],
+  "author": "Liel Avraham",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/lieox/sendpulse-whatsapp-mcp.git" },
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.6.1",
+    "axios": "^1.7.9",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
