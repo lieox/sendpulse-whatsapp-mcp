@@ -17,7 +17,7 @@ The credentials open the **whole SendPulse account**, not one bot. Anyone holdin
 
 ### Windows
 
-Two lines, in PowerShell or Command Prompt:
+Two lines, in **Command Prompt** (search for `cmd` in the Start menu), not PowerShell:
 
 ```
 npm install -g github:lieox/sendpulse-whatsapp-mcp
@@ -26,6 +26,7 @@ claude mcp add -e SENDPULSE_CLIENT_ID=your-id -e SENDPULSE_CLIENT_SECRET=your-se
 
 Why it looks like this:
 
+- **Command Prompt, not PowerShell.** On many Windows machines PowerShell's execution policy blocks `npm` itself (`npm.ps1 cannot be loaded because running scripts is disabled on this system`). Command Prompt runs `npm.cmd` and is not affected. CI also passes in PowerShell, but only because scripts are allowed there.
 - **Installed once, not through npx.** The install takes about 30 seconds on a Windows CI machine. Through npx that happens on the first start, Claude Code gives up after 30 seconds, and the first connection fails. An installed server starts instantly and needs no network to start.
 - **No `--` in the command.** When Claude Code itself was installed with npm, PowerShell swallows `--` and the command fails with `error: unknown option '-y'`. Keep `-s user` right before the name: `-e` accepts several values and stops only at the next option.
 - **`cmd /c`** is the safe form for npm commands on Windows. CI shows current Claude Code versions (2.1.197 and 2.1.284) also connect with plain `sendpulse-whatsapp-mcp`.
