@@ -1,0 +1,119 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+env:
+  PKG: github:lieox/sendpulse-whatsapp-mcp
+  DISABLE_AUTOUPDATER: "1"
+
+jobs:
+  build-and-smoke:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: npm run build
+      - name: Committed dist/ matches src/
+        run: git diff --exit-code -- dist
+      - name: Smoke test (local build)
+        run: npm test
+      - name: Smoke test (installed from GitHub, Windows)
+        if: runner.os == 'Windows'
+        run: node test/smoke.mjs cmd /c npx -y "$env:PKG#$env:GITHUB_SHA"
+      - name: Smoke test (installed from GitHub, macOS)
+        if: runner.os == 'macOS'
+        run: node test/smoke.mjs npx -y "$PKG#$GITHUB_SHA"
+
+  # Runs the exact install command from the README inside Claude Code, then asks Claude Code
+  # itself to connect (`claude mcp get` starts the server and reports Connected / Failed).
+  claude-code:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, install: native }
+          - { os: windows-latest, install: npm }
+          - { os: macos-latest, install: native }
+    runs-on: ${{ matrix.os }}
+    name: claude-code (${{ matrix.os }}, ${{ matrix.install }})
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Claude Code (native, Windows)
+        if: runner.os == 'Windows' && matrix.install == 'native'
+        run: |
+          irm https://claude.ai/install.ps1 | iex
+          "$env:USERPROFILE\.local\bin" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+      - name: Install Claude Code (npm, Windows)
+        if: runner.os == 'Windows' && matrix.install == 'npm'
+        run: npm install -g @anthropic-ai/claude-code
+      - name: Install Claude Code (native, macOS)
+        if: runner.os == 'macOS'
+        run: |
+          curl -fsSL https://claude.ai/install.sh | bash
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - run: claude --version
+
+      - name: "First run, cold npx cache: PowerShell + cmd /c"
+        if: runner.os == 'Windows'
+        id: cold
+        continue-on-error: true
+        run: |
+          claude mcp add sp-cold -s user -e SENDPULSE_CLIENT_ID=fake -e SENDPULSE_CLIENT_SECRET=fake -e SENDPULSE_READ_ONLY=1 -- cmd /c npx -y $env:PKG
+          $out = claude mcp get sp-cold | Out-String; $out
+          if ($out -notmatch 'Connected') { exit 1 }
+
+      - name: Warm the npx cache
+        shell: bash
+        run: "{ npx -y \"$PKG\" 2>&1 || true; } | grep SENDPULSE_CLIENT_ID"
+
+      - name: "PowerShell 7 + cmd /c npx"
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          claude mcp add sp-pwsh -s user -e SENDPULSE_CLIENT_ID=fake -e SENDPULSE_CLIENT_SECRET=fake -e SENDPULSE_READ_ONLY=1 -- cmd /c npx -y $env:PKG
+          $out = claude mcp get sp-pwsh | Out-String; $out
+          if ($out -notmatch 'Connected') { exit 1 }
+      - name: "Windows PowerShell 5.1 + cmd /c npx"
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          claude mcp add sp-ps51 -s user -e SENDPULSE_CLIENT_ID=fake -e SENDPULSE_CLIENT_SECRET=fake -e SENDPULSE_READ_ONLY=1 -- cmd /c npx -y $env:PKG
+          $out = claude mcp get sp-ps51 | Out-String; $out
+          if ($out -notmatch 'Connected') { exit 1 }
+      - name: "Command Prompt + cmd /c npx"
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: |
+          call claude mcp add sp-cmd -s user -e SENDPULSE_CLIENT_ID=fake -e SENDPULSE_CLIENT_SECRET=fake -e SENDPULSE_READ_ONLY=1 -- cmd /c npx -y %PKG%
+          call claude mcp get sp-cmd
+          call claude mcp get sp-cmd | findstr /C:"Connected"
+
+      - name: "PowerShell 7 + plain npx (no cmd /c)"
+        if: runner.os == 'Windows'
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          claude mcp add sp-pwsh-plain -s user -e SENDPULSE_CLIENT_ID=fake -e SENDPULSE_CLIENT_SECRET=fake -e SENDPULSE_READ_ONLY=1 -- npx -y $env:PKG
+          $out = claude mcp get sp-pwsh-plain | Out-String; $out
+          if ($out -notmatch 'Connected') { exit 1 }
+
+      - name: "macOS: zsh + npx"
+        if: runner.os == 'macOS'
+        shell: zsh {0}
+        run: |
+          claude mcp add sp-mac -s user -e SENDPULSE_CLIENT_ID=fake -e SENDPULSE_CLIENT_SECRET=fake -e SENDPULSE_READ_ONLY=1 -- npx -y "$PKG"
+          claude mcp get sp-mac | tee out.txt
+          grep -q Connected out.txt
