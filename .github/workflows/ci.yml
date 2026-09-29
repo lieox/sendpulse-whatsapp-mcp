@@ -32,9 +32,14 @@ jobs:
         run: |
           npm install -g "$env:PKG#$env:GITHUB_SHA"
           node test/smoke.mjs cmd /c sendpulse-whatsapp-mcp
-      - name: Smoke test (npx from GitHub, macOS)
+      # npx with a pinned "#<sha>" fails on npm 10 ("GitFetcher requires an Arborist constructor"),
+      # so this commit is tested through npm install -g. The plain npx command users run is
+      # tested in the claude-code job.
+      - name: Smoke test (npm install -g from GitHub, macOS)
         if: runner.os == 'macOS'
-        run: node test/smoke.mjs npx -y "$PKG#$GITHUB_SHA"
+        run: |
+          npm install -g "$PKG#$GITHUB_SHA"
+          node test/smoke.mjs sendpulse-whatsapp-mcp
 
   # Runs the README install commands inside a real Claude Code, then asks Claude Code itself
   # to connect: `claude mcp get` starts the server and reports Connected or Failed.

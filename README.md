@@ -26,9 +26,9 @@ claude mcp add -e SENDPULSE_CLIENT_ID=your-id -e SENDPULSE_CLIENT_SECRET=your-se
 
 Why it looks like this:
 
-- **Installed once, not through npx.** Fetching from GitHub with npx on the first start can take longer than the 30 seconds Claude Code waits for a server on Windows, and then the first connection fails. An installed server starts instantly and needs no network to start.
+- **Installed once, not through npx.** The install takes about 30 seconds on a Windows CI machine. Through npx that happens on the first start, Claude Code gives up after 30 seconds, and the first connection fails. An installed server starts instantly and needs no network to start.
 - **No `--` in the command.** When Claude Code itself was installed with npm, PowerShell swallows `--` and the command fails with `error: unknown option '-y'`. Keep `-s user` right before the name: `-e` accepts several values and stops only at the next option.
-- **`cmd /c`** because Claude Code on Windows cannot start an npm command (`.cmd`) directly.
+- **`cmd /c`** is the safe form for npm commands on Windows. CI shows current Claude Code versions (2.1.197 and 2.1.284) also connect with plain `sendpulse-whatsapp-mcp`.
 
 To update later, run the `npm install -g` line again.
 
